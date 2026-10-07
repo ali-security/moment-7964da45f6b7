@@ -503,6 +503,33 @@ test('non RFC 2822 strings', function (assert) {
     }
 });
 
+test('parsing RFC 2822 with nested comments', function (assert) {
+    var balanced = 'Tue, 01 Nov 2016 01:23:45 GMT (x)',
+        unbalanced = 'Tue, 01 Nov 2016 01:23:45 GMT ((x)';
+
+    assert.ok(moment(balanced, moment.RFC_2822, true).isValid(), balanced + ' - comment is stripped');
+    assert.ok(!moment(unbalanced, moment.RFC_2822, true).isValid(), unbalanced + ' - comment does not swallow an unbalanced open paren');
+});
+
+test('parsing RFC 2822 is not vulnerable to ReDoS (CVE-2022-31129)', function (assert) {
+    var input = new Array(200001).join('('),
+        start, elapsed;
+
+    start = Date.now();
+    assert.ok(!moment(input, moment.RFC_2822).isValid(), 'explicit RFC 2822 parse of many open parens is invalid');
+    elapsed = Date.now() - start;
+    assert.ok(elapsed < 2000, 'explicit RFC 2822 parse of many open parens took ' + elapsed + 'ms');
+
+    // RFC 2822 parsing is also attempted by default when no format is given
+    moment.createFromInputFallback = function (config) {
+        config._d = new Date(NaN);
+    };
+    start = Date.now();
+    assert.ok(!moment(input).isValid(), 'default parse of many open parens is invalid');
+    elapsed = Date.now() - start;
+    assert.ok(elapsed < 2000, 'default parse of many open parens took ' + elapsed + 'ms');
+});
+
 test('parsing RFC 2822 in a different locale', function (assert) {
     var testCases = {
         'clean RFC2822 datetime with all options': 'Tue, 01 Nov 2016 01:23:45 UT',
