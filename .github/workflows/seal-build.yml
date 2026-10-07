@@ -1,0 +1,30 @@
+name: seal-build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '8.11.2'
+      - name: Install publisher npm (6.4.1)
+        run: npm install -g npm@6.4.1
+      - name: Stage publish tree (upstream scripts/npm_prepublish.sh)
+        run: bash scripts/npm_prepublish.sh HEAD
+      - name: Pack
+        run: |
+          cd ../moment-npm
+          npm pack
+          mkdir -p "$GITHUB_WORKSPACE/seal-dist"
+          cp moment-2.24.0.tgz "$GITHUB_WORKSPACE/seal-dist/"
+          tar tzf "$GITHUB_WORKSPACE/seal-dist/moment-2.24.0.tgz" | wc -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moment-2.24.0
+          path: seal-dist/moment-2.24.0.tgz
+          if-no-files-found: error
